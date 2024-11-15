@@ -1,5 +1,6 @@
 const path = require('path')
 const process = require('process')
+const fs = require('fs/promises')
 
 const bindir = process.env.BAZEL_BINDIR
 const execroot = process.env.JS_BINARY__EXECROOT
@@ -12,7 +13,7 @@ function bazelSandboxPlugin() {
     name: 'bazel-sandbox',
     setup(build) {
       build.onResolve(
-        { filter: /./ },
+        { filter: /./, namespace: 'file' },
         async ({ path: importPath, ...otherOptions }) => {
           // NB: these lines are to prevent infinite recursion when we call `build.resolve`.
           if (otherOptions.pluginData) {
@@ -32,7 +33,30 @@ function bazelSandboxPlugin() {
 }
 
 async function resolveInExecroot(build, importPath, otherOptions) {
-  const result = await build.resolve(importPath, otherOptions)
+  let result;
+
+  // NOTE(calebmer): Relative imports are easy to resolve ourselves without
+  // calling `build.resolve()`. This dramatically improves performance since
+  // `build.resolve()` requires an IPC call to esbuild's go code. It takes our
+  // `//app:app_client_optimize_deps` rule from building in ~40s to building
+  // in ~4.
+  if (importPath.startsWith(".")) {
+    let resolvedPath = path.join(otherOptions.resolveDir, importPath);
+    try {
+      if ((await fs.lstat(resolvedPath)).isSymbolicLink()) {
+        resolvedPath = await fs.readlink(path.join(otherOptions.resolveDir, importPath));
+      }
+      result = {path: resolvedPath};
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+
+  if (!result) {
+    result = await build.resolve(importPath, otherOptions);
+  }
 
   if (result.errors && result.errors.length) {
     // There was an error resolving, just return the error as-is.
