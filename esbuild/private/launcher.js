@@ -135,7 +135,20 @@ async function runOneBuild(args, userArgsFilePath, configFilePath) {
       writeFileSync(metafile, JSON.stringify(result.metafile))
     }
   } catch (e) {
-    console.error(e)
+    // NOTE(calebmer): Simplify error message. If `args.logLevel` is not silent
+    // then any build errors will have already been logged. Don't log them again.
+    // There may be cases where we silence errors that's thrown in JavaScript
+    // that's not logged by esbuild's native error logger. We'll address those
+    // issues as we see them.
+    //
+    // This is the error message we're silencing:
+    // https://github.com/evanw/esbuild/blob/9eca46464ed5615cb36a3beb3f7a7b9a8ffbe7cf/lib/shared/common.ts#L975
+    const hasAlreadyLogged =
+      args.logLevel !== "silent" &&
+      e instanceof Error &&
+      /Build failed with \d+ errors?:/.test(e.message)
+
+    if (!hasAlreadyLogged) console.error(e)
     process.exit(1)
   }
 }
