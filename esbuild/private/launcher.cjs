@@ -2,7 +2,7 @@ const { readFileSync, writeFileSync } = require('fs')
 const { pathToFileURL } = require('url')
 const { join } = require('path')
 const esbuild = require('esbuild')
-const { bazelSandboxPlugin } = require('./plugins/bazel-sandbox.js')
+const { bazelSandboxPlugin } = require('./plugins/bazel-sandbox.cjs')
 
 function getFlag(flag, required = true) {
   const argvFlag = process.argv.find((arg) => arg.startsWith(`${flag}=`))
@@ -144,7 +144,7 @@ async function runOneBuild(args, userArgsFilePath, configFilePath) {
     // This is the error message we're silencing:
     // https://github.com/evanw/esbuild/blob/9eca46464ed5615cb36a3beb3f7a7b9a8ffbe7cf/lib/shared/common.ts#L975
     const hasAlreadyLogged =
-      args.logLevel !== "silent" &&
+      args.logLevel !== 'silent' &&
       e instanceof Error &&
       /Build failed with \d+ errors?:/.test(e.message)
 

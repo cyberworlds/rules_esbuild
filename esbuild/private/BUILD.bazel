@@ -9,8 +9,8 @@ exports_files(
 
 exports_files(
     [
-        "launcher.js",
-        "plugins/bazel-sandbox.js",
+        "launcher.cjs",
+        "plugins/bazel-sandbox.cjs",
     ],
     visibility = ["//visibility:public"],
 )
